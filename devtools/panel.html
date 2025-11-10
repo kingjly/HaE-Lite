@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>HaE-Lite Panel</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="header">
+      <div class="title">HaE-Lite</div>
+      <label style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+        全局开关
+        <input type="checkbox" id="global-toggle" checked />
+      </label>
+    </header>
+    <nav class="subtabs" id="subtabs">
+      <button data-view="results" class="active" aria-selected="true">结果分析</button>
+      <button data-view="rules" aria-selected="false">识别规则</button>
+      <button data-view="settings" aria-selected="false">基础配置</button>
+    </nav>
+    <main class="main">
+      <section class="list" id="results-container" aria-label="结果分析">
+        <div class="results-toolbar" id="results-toolbar">
+          <form id="filter-form" class="filters">
+            <input id="filter-url" placeholder="按URL过滤" />
+            <input id="filter-category" placeholder="按类别过滤" />
+            <button type="submit">搜索</button>
+            <button type="button" id="reset-filter">重置</button>
+          </form>
+          <div class="results-actions">
+            <label class="toggle">
+              <input type="checkbox" id="only-matched" />
+              仅显示有匹配
+            </label>
+            <button type="button" id="clear-results">清空结果</button>
+          </div>
+        </div>
+        <div id="request-list" aria-label="请求列表"></div>
+      </section>
+      <div id="splitter" class="splitter" role="separator" aria-label="调整面板宽度" aria-orientation="vertical"></div>
+      <section class="detail" id="request-detail" aria-label="请求详情"></section>
+      <section class="rules" id="rules-config" aria-label="识别规则" hidden></section>
+      <section class="rules" id="settings-config" aria-label="基础配置" hidden></section>
+    </main>
+    <footer class="footer"></footer>
+    <script type="module" src="./panel.js"></script>
+  </body>
+</html>

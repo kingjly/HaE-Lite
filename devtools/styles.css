@@ -1,0 +1,538 @@
+:root {
+  --bg: #0f1216;
+  --fg: #e6e8eb;
+  --muted: #a0a6ad;
+  --border: #1c2128;
+  --accent: #2f81f7;
+  --good: #2ea043;
+  --warn: #d29922;
+  --bad: #f85149;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font:
+    13px/1.5 system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    Ubuntu;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.title {
+  font-weight: 600;
+}
+
+.filters {
+  display: flex;
+  gap: 8px;
+}
+.filters input {
+  padding: 6px 8px;
+  background: #11161c;
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.filters button {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  background: #131820;
+  color: var(--fg);
+  border-radius: 6px;
+}
+
+.main {
+  display: grid;
+  grid-template-columns: 1fr;
+  height: calc(100% - 96px);
+}
+.main.analysis {
+  grid-template-columns: var(--left, 52%) 6px 1fr;
+}
+.list {
+  overflow: auto;
+  border-right: none;
+}
+.detail {
+  overflow: auto;
+}
+
+/* Draggable splitter between list and detail */
+.splitter {
+  background: var(--border);
+  cursor: col-resize;
+}
+.splitter:hover {
+  background: #2a313a;
+}
+
+.request-item {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  position: relative;
+  border-left: 3px solid transparent;
+  transition: background 0.15s ease;
+}
+.request-item:hover {
+  background: #12161c;
+}
+/* Highlight sensitive results */
+.request-item.sensitive {
+  background: linear-gradient(0deg, rgba(248, 81, 73, 0.08), rgba(248, 81, 73, 0.08));
+  border-left-color: var(--bad);
+  box-shadow: none;
+}
+.request-item.sensitive:hover {
+  background: linear-gradient(0deg, rgba(248, 81, 73, 0.14), rgba(248, 81, 73, 0.14));
+}
+.request-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.method {
+  font-weight: 600;
+}
+.badge {
+  margin-left: auto;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: #1b2130;
+  color: var(--fg);
+}
+/* Badge inside sensitive rows uses bad palette for更明显区分 */
+.request-item.sensitive .badge {
+  background: #211216;
+  color: var(--bad);
+}
+/* Response length badge shown to the left of rule hit count */
+.length-badge {
+  margin-left: auto;
+  margin-right: 8px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: #151a22;
+  color: var(--muted);
+}
+.badge.good {
+  background: #132019;
+  color: var(--good);
+}
+.badge.warn {
+  background: #1f1a12;
+  color: var(--warn);
+}
+.badge.bad {
+  background: #211216;
+  color: var(--bad);
+}
+
+.request-meta {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.detail-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+}
+.detail-tabs button {
+  padding: 6px 10px;
+  background: #131820;
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.detail-tabs button.active {
+  border-color: var(--accent);
+  background: #0f141b;
+}
+.match-group {
+  padding: 8px 12px;
+}
+.match-group h4 {
+  margin: 8px 0;
+}
+.match-group ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+.match-group li {
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #12161c;
+}
+.match-group code,
+.match-group pre {
+  display: block;
+  background: #0c1015;
+  padding: 6px;
+  border-radius: 6px;
+  overflow: auto;
+}
+.footer {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* Subtabs and toggles */
+.subtabs {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+.subtabs button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 10px 12px;
+  border-bottom: 2px solid transparent;
+}
+.subtabs button.active {
+  color: var(--fg);
+  border-bottom-color: var(--accent);
+}
+
+.rules {
+  grid-column: 1 / -1;
+}
+.rules-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.rules-toolbar button {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  background: #131820;
+  color: var(--fg);
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1;
+}
+.rules-header {
+  display: grid;
+  grid-template-columns: 24px 1fr 1fr 110px 100px 140px 2fr 140px;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+}
+.rule-group {
+  margin-top: 8px;
+}
+.rule-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  color: var(--muted);
+}
+.rule-group-header button {
+  padding: 2px 6px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  background: #131820;
+  color: var(--fg);
+  border-radius: 6px;
+}
+.rule-group-title {
+  font-weight: 600;
+  color: var(--fg);
+}
+.rule-item,
+.rule-new {
+  display: grid;
+  grid-template-columns: 24px 1fr 1fr 110px 100px 140px 2fr 140px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.rule-item .badge {
+  font-size: 12px;
+  color: var(--muted);
+}
+.rule-item input[type='text'],
+.rule-item select,
+.rule-new input[type='text'],
+.rule-new select {
+  padding: 6px 8px;
+  background: #11161c;
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.rule-item .rule-id {
+  font-size: 12px;
+  color: var(--muted);
+}
+.rule-new button {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  background: #131820;
+  color: var(--fg);
+  border-radius: 6px;
+}
+.rule-new .id-box {
+  display: flex;
+  gap: 8px;
+}
+.rule-new .id-box input[type='text'] {
+  max-width: 90px;
+  padding: 4px 6px;
+  height: 26px;
+}
+.rule-new .id-box button {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+/* Actions column */
+.actions-cell {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.btn-add,
+.btn-delete {
+  padding: 4px 8px;
+  font-size: 12px;
+  line-height: 1;
+  height: 26px;
+  border: 1px solid var(--border);
+  background: #131820;
+  color: var(--fg);
+  border-radius: 6px;
+}
+.btn-delete {
+  background: #211216;
+  color: var(--bad);
+}
+
+/* Rule config form */
+.rule-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.rule-form .field {
+  display: flex;
+  flex-direction: column;
+}
+.rule-form .field.wide {
+  grid-column: 1 / span 2;
+}
+.rule-form label {
+  font-size: 12px;
+  color: var(--muted);
+}
+.rule-form input,
+.rule-form select {
+  padding: 6px 8px;
+  background: #11161c;
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.rule-form .actions {
+  grid-column: 2;
+  display: flex;
+  align-items: end;
+}
+.rule-form button {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  background: #131820;
+  color: var(--fg);
+  border-radius: 6px;
+}
+
+.rule-meta { display: none; }
+.rule-meta .rule-pattern {
+  background: #0c1015;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.rule-meta .rule-flags {
+  font-size: 12px;
+  color: var(--muted);
+}
+.results-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.results-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.results-actions button,
+.footer button {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  background: #131820;
+  color: var(--fg);
+  border-radius: 6px;
+}
+.results-actions .toggle {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* 基础配置分隔与标签样式 */
+.config-section {
+  border-top: 1px solid var(--border);
+  padding: 12px 12px;
+}
+.section-title {
+  font-weight: 600;
+  color: var(--fg);
+  margin-bottom: 8px;
+}
+.section-row { margin: 6px 0; }
+.section-tip { color: var(--muted); font-size: 12px; }
+
+.chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #131820;
+  color: var(--fg);
+}
+.chip-remove {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.chip-remove:hover { color: var(--fg); }
+
+/* 追加“＋新增”chip与轻量编辑器 */
+.chip-add {
+  cursor: pointer;
+  color: var(--muted);
+  background: #0f141b;
+  border-style: dashed;
+}
+.chip-add:hover { color: var(--fg); background: #12161c; }
+.chip-editor input.chip-editor-input {
+  min-width: 200px;
+}
+
+/* 请求/响应包外框与切换 */
+.packet { padding: 8px 0; }
+.packet-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+}
+.packet-title { font-weight: 600; color: var(--fg); }
+.packet-toggle label { color: var(--muted); margin-right: 8px; }
+.packet-toggle input[type='radio'] { accent-color: var(--accent); }
+.packet-frame {
+  margin: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #0c1015;
+}
+.packet-pre {
+  margin: 0;
+  padding: 12px;
+  max-height: 50vh;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* 全局暗色滚动条样式 */
+html { scrollbar-color: #303a46 #0f1216; scrollbar-width: thin; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: #0f1216; }
+*::-webkit-scrollbar-thumb {
+  background-color: #303a46;
+  border: 2px solid #0f1216;
+  border-radius: 6px;
+}
+*::-webkit-scrollbar-thumb:hover { background-color: #475569; }
+
+/* 基础配置表单统一暗色样式（未显式设置 type 时也覆盖） */
+.config-section input:not([type='checkbox']),
+.config-section select,
+.config-section textarea {
+  padding: 6px 8px;
+  background: #11161c;
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.config-section input::placeholder,
+.config-section textarea::placeholder {
+  color: var(--muted);
+}
+.config-section button {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  background: #131820;
+  color: var(--fg);
+  border-radius: 6px;
+}
+.config-section button:hover { background: #0f141b; }
+.config-section input:focus,
+.config-section select:focus,
+.config-section textarea:focus,
+.config-section button:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(47, 129, 247, 0.35);
+}
+.config-section input[type='checkbox'] {
+  accent-color: var(--accent);
+}

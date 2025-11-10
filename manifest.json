@@ -1,0 +1,16 @@
+{
+  "name": "HaE-Lite",
+  "version": "1.0.0",
+  "manifest_version": 3,
+  "description": "Highlighter and Extractor - Lite (DevTools)",
+  "devtools_page": "devtools/devtools.html",
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": ["storage", "tabs", "debugger"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_title": "HaE-Lite"
+  }
+}
