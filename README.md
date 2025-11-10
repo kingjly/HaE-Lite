@@ -49,8 +49,12 @@ HaE-Lite（Highlighter & Extractor Lite）是基于著名 BurpSuite 插件 [HaE]
 ### 使用示例
 
 - **捕获示例**：打开任意网站，在 HaE-Lite 面板中即可看到捕获的请求与响应。
+<img width="2560" height="1528" alt="image" src="https://github.com/user-attachments/assets/76dd6921-5dad-4004-9749-87be1345644a" />
 - **规则示例**：默认规则包含 JWT、API Key、Bearer Token 等常见敏感信息正则。
-- **匹配效果**：匹配结果在结果列表中展示，支持按分类筛选。
+<img width="2560" height="1528" alt="image" src="https://github.com/user-attachments/assets/47c6c739-5a17-4dee-acd0-c53f8cc067b5" />
+- **过滤规则**：过滤指定后缀，域名黑白名单
+<img width="2560" height="1525" alt="image" src="https://github.com/user-attachments/assets/cb8a50bf-7936-41b4-ac76-62ec8b22ed79" />
+
 
 ## 📦 规则管理
 
