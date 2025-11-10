@@ -6,7 +6,7 @@
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-green)](https://developer.chrome.com/docs/extensions/mv3/intro/platform-vision/)
 [![License](https://img.shields.io/badge/License-MIT-orange)](LICENSE)
 
-English | [中文](README.zh-CN.md)
+English | [中文](README.md)
 
 ## 📖 Description
 
