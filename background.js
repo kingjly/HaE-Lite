@@ -1,5 +1,12 @@
 import { Storage } from './shared/storage.js';
 import { RuleEngine } from './shared/ruleEngine.js';
+import { processRequest } from './background/requestProcessor.js';
+import {
+  initDebuggerCapture as initDebuggerCaptureImpl,
+  attachAllHttpTabs as attachAllHttpTabsImpl,
+  detachAllTabs,
+  setGlobalEnabledCache,
+} from './background/captureInit.js';
 
 // 初始化数据库与规则引擎
 async function bootstrap() {
@@ -15,7 +22,9 @@ async function bootstrap() {
     );
     console.log('[HaE-Lite] background ready');
   } catch (e) {
-    console.error('[HaE-Lite] init failed', e);
+    const name = e && e.name ? e.name : '';
+    const msg = e && e.message ? e.message : String(e);
+    console.warn(`[HaE-Lite] init warn (${name})`, msg);
   }
 }
 
@@ -31,101 +40,24 @@ try {
       }
     });
   }
-} catch (_) {}
+} catch {}
 
 // 初始化完成后再启动 debugger 捕获，避免 Storage 尚未就绪
-bootstrap().then(() => {
-  try { initDebuggerCapture(); } catch {}
-}).catch(() => {
-  try { initDebuggerCapture(); } catch {}
-});
+bootstrap()
+  .then(() => {
+    try {
+      initDebuggerCapture();
+    } catch {}
+  })
+  .catch(() => {
+    try {
+      initDebuggerCapture();
+    } catch {}
+  });
 
 // 统一的请求处理：复用现有过滤与匹配逻辑，供消息与 debugger 捕获共用
 async function processRequestInternal(req) {
-  if (!Storage.db) {
-    try { await Storage.init(); } catch {}
-  }
-  // 全局开关
-  const globalEnabled = await Storage.getValue('globalEnabled', true);
-  if (!globalEnabled) return { count: 0, skipped: 'disabled' };
-
-  // 协议过滤
-  const url = String(req?.url || '').toLowerCase();
-  if (url.startsWith('chrome-extension://') || url.startsWith('data:')) {
-    return { count: 0, skipped: 'protocol' };
-  }
-
-  // 后缀过滤
-  let list = [];
-  try { list = await Storage.getValue('filterExtensions', []); } catch {}
-  const qp = url.split('?')[0];
-  if (Array.isArray(list) && list.length) {
-    const hit = list.some((sfx) => {
-      const s = String(sfx || '').trim().toLowerCase();
-      if (!s) return false;
-      return qp.endsWith(s.startsWith('.') ? s : `.${s}`);
-    });
-    if (hit) return { count: 0, skipped: 'filtered' };
-  }
-
-  // 域名白/黑名单过滤
-  const parseHost = (u) => {
-    try {
-      const h = new URL(u).hostname.toLowerCase();
-      return h.split(':')[0];
-    } catch (_) {
-      const m = String(u || '').toLowerCase().match(/^[a-z]+:\/\/([^\/]+)/);
-      const raw = m ? m[1] : '';
-      return String(raw || '').split(':')[0];
-    }
-  };
-  const domainMatch = (host, raw) => {
-    let pat = String(raw || '').trim().toLowerCase();
-    pat = pat.replace(/^https?:\/\/|^wss?:\/\/|^ftp:\/\//, '');
-    pat = pat.replace(/\/.*$/, '');
-    pat = pat.split(':')[0];
-    if (pat.startsWith('.')) pat = pat.slice(1);
-    if (!pat) return false;
-    if (pat.includes('*')) {
-      const esc = pat
-        .replace(/[-\/\\^$+?.()|[\]{}]/g, '\\$&')
-        .replace(/\*/g, '.*');
-      try {
-        const re = new RegExp(`^${esc}$`);
-        if (re.test(host)) return true;
-        if (pat.startsWith('*.')) {
-          const root = pat.slice(2);
-          if (root && host === root) return true;
-        }
-        return false;
-      } catch (_) { return false; }
-    }
-    if (host === pat) return true;
-    return host.endsWith(`.${pat}`);
-  };
-  const host = parseHost(url);
-  try {
-    const wlEnabled = await Storage.getFlag('whitelistEnabled');
-    const blEnabled = await Storage.getFlag('blacklistEnabled');
-    const whitelist = await Storage.getValue('domainWhitelist', []);
-    const blacklist = await Storage.getValue('domainBlacklist', []);
-    if (wlEnabled && Array.isArray(whitelist) && whitelist.length) {
-      const allowed = whitelist.some((d) => domainMatch(host, d));
-      if (!allowed) return { count: 0, skipped: 'whitelist' };
-    }
-    if (blEnabled && Array.isArray(blacklist) && blacklist.length) {
-      const blocked = blacklist.some((d) => domainMatch(host, d));
-      if (blocked) return { count: 0, skipped: 'blacklist' };
-    }
-  } catch (_) {}
-
-  const matches = RuleEngine.match(req);
-  const payload = { requestData: req, matches };
-  if (matches.length > 0) {
-    Storage.saveRequest(req, matches).catch(() => {});
-  }
-  try { chrome.runtime.sendMessage({ type: 'newMatch', data: payload }); } catch {}
-  return { count: matches.length };
+  return processRequest(req);
 }
 
 // 消息处理
@@ -232,11 +164,11 @@ function handleSetGlobalEnabled(enabled, sendResponse) {
   Storage.setFlag('globalEnabled', val)
     .then(() => {
       try {
-        globalEnabledCache = val;
+        setGlobalEnabledCache(val);
         if (val) {
-          attachAllHttpTabs();
+          attachAllHttpTabsImpl();
         } else {
-          for (const tabId of Array.from(attachedTabs)) detachFromTab(tabId);
+          detachAllTabs();
         }
       } catch {}
       sendResponse({ ok: true });
@@ -245,16 +177,20 @@ function handleSetGlobalEnabled(enabled, sendResponse) {
 }
 
 function handleGetGlobalEnabled(sendResponse) {
-  Storage.getFlag('globalEnabled').then((val) => {
-    // 默认开启
-    sendResponse({ ok: true, enabled: val !== false });
-  }).catch((err) => sendResponse({ ok: false, error: String(err) }));
+  Storage.getFlag('globalEnabled')
+    .then((val) => {
+      // 默认开启
+      sendResponse({ ok: true, enabled: val !== false });
+    })
+    .catch((err) => sendResponse({ ok: false, error: String(err) }));
 }
 
 function handleGetDefaultsEnabled(sendResponse) {
-  Storage.getFlag('disableDefaults').then((flag) => {
-    sendResponse({ ok: true, enabled: !flag });
-  }).catch((err) => sendResponse({ ok: false, error: String(err) }));
+  Storage.getFlag('disableDefaults')
+    .then((flag) => {
+      sendResponse({ ok: true, enabled: !flag });
+    })
+    .catch((err) => sendResponse({ ok: false, error: String(err) }));
 }
 
 function handleSetFilterExts(list, sendResponse) {
@@ -428,144 +364,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 // ========== Debugger 自动捕获 ==========
 // 仅当全局开启时附加到 http/https 标签，捕获请求与响应正文
-const attachedTabs = new Set();
-const sessions = new Map(); // tabId -> Map(requestId -> partial)
-let globalEnabledCache = true; // 缓存全局开关，避免频繁读存储
-let debuggerListenersRegistered = false; // 防止重复注册事件监听
-
-function isHttpUrl(u) {
-  const s = String(u || '').toLowerCase();
-  return s.startsWith('http://') || s.startsWith('https://');
-}
-
-function isTextContentType(ct) {
-  const s = String(ct || '').toLowerCase();
-  return s.startsWith('text/') || s.includes('application/json') || s.includes('application/javascript') || s.includes('application/xml') || s.includes('application/x-www-form-urlencoded');
-}
-
-function decodeBody(body, base64, resHeaders) {
-  if (!base64) return String(body || '');
-  const ct = resHeaders?.['content-type'] || resHeaders?.['Content-Type'] || '';
-  if (!isTextContentType(ct)) return ''; // 非文本体跳过，避免噪音
-  try {
-    return atob(String(body || ''));
-  } catch { return ''; }
-}
-
-function getSession(tabId) {
-  if (!sessions.has(tabId)) sessions.set(tabId, new Map());
-  return sessions.get(tabId);
-}
-
-function attachToTab(tabId) {
-  if (!globalEnabledCache) return; // 全局关闭时不附加
-  if (attachedTabs.has(tabId)) return;
-  try {
-    chrome.debugger.attach({ tabId }, '1.3', () => {
-      try {
-        chrome.debugger.sendCommand({ tabId }, 'Network.enable');
-        attachedTabs.add(tabId);
-      } catch (e) {
-        try { chrome.debugger.detach({ tabId }); } catch {}
-      }
-    });
-  } catch (_) {}
-}
-
-function detachFromTab(tabId) {
-  if (!attachedTabs.has(tabId)) return;
-  try { chrome.debugger.detach({ tabId }); } catch {}
-  attachedTabs.delete(tabId);
-  sessions.delete(tabId);
-}
 
 async function initDebuggerCapture() {
-  if (!Storage.db) {
-    try { await Storage.init(); } catch {}
-  }
-  try { globalEnabledCache = await Storage.getValue('globalEnabled', true); } catch { globalEnabledCache = true; }
-
-  try {
-    if (!debuggerListenersRegistered) {
-      chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-        if (changeInfo.status === 'complete' && isHttpUrl(tab?.url)) attachToTab(tabId);
-      });
-      chrome.tabs.onActivated.addListener(({ tabId }) => {
-        try { chrome.tabs.get(tabId, (tab) => { if (isHttpUrl(tab?.url)) attachToTab(tabId); }); } catch {}
-      });
-      chrome.tabs.onRemoved.addListener((tabId) => detachFromTab(tabId));
-      chrome.debugger.onDetach.addListener((target) => detachFromTab(target.tabId));
-
-      chrome.debugger.onEvent.addListener(async (source, method, params) => {
-        const tabId = source?.tabId;
-        if (!attachedTabs.has(tabId)) return;
-        const sess = getSession(tabId);
-        const id = params?.requestId;
-        if (!id) return;
-        if (method === 'Network.requestWillBeSent') {
-          const req = params.request || {};
-          const hdr = req.headers || {};
-          sess.set(id, {
-            url: req.url || '',
-            method: req.method || 'GET',
-            reqHeaders: hdr,
-            reqBody: String(req.postData || ''),
-          });
-        } else if (method === 'Network.responseReceived') {
-          const rec = sess.get(id) || {};
-          const resp = params.response || {};
-          rec.statusCode = resp.status || 0;
-          rec.statusText = String(resp.statusText || '');
-          rec.resHeaders = resp.headers || {};
-          sess.set(id, rec);
-        } else if (method === 'Network.loadingFinished') {
-          const rec = sess.get(id);
-          if (!rec) return;
-          try {
-            chrome.debugger.sendCommand(source, 'Network.getResponseBody', { requestId: id }, async (bodyObj) => {
-              const resHeaders = rec.resHeaders || {};
-              const resBody = decodeBody(bodyObj?.body || '', !!bodyObj?.base64Encoded, resHeaders);
-              const reqHeaders = rec.reqHeaders || {};
-              const headers = { ...reqHeaders, ...resHeaders };
-              const requestData = {
-                url: rec.url || '',
-                method: rec.method || 'GET',
-                statusCode: rec.statusCode || 0,
-                statusText: rec.statusText || '',
-                headers,
-                body: resBody,
-                reqHeaders,
-                resHeaders,
-                reqBody: rec.reqBody || '',
-                resBody,
-                timestamp: Date.now(),
-              };
-              await processRequestInternal(requestData);
-              sess.delete(id);
-            });
-          } catch (_) {
-            sess.delete(id);
-          }
-        }
-      });
-      debuggerListenersRegistered = true;
-    }
-
-    // 根据当前开关状态附加到已有标签
-    if (globalEnabledCache) {
-      chrome.tabs.query({}, (tabs) => {
-        for (const t of tabs || []) if (isHttpUrl(t.url)) attachToTab(t.id);
-      });
-    } else {
-      for (const tabId of Array.from(attachedTabs)) detachFromTab(tabId);
-    }
-  } catch (e) {
-    console.warn('init debugger capture failed', e);
-  }
-}
-
-function attachAllHttpTabs() {
-  chrome.tabs.query({}, (tabs) => {
-    for (const t of tabs || []) if (isHttpUrl(t.url)) attachToTab(t.id);
-  });
+  return initDebuggerCaptureImpl();
 }
