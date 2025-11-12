@@ -35,3 +35,23 @@ function sevScore(s) {
   if (s === 'medium') return 2;
   return 1;
 }
+
+function _hashPattern(p) {
+  const s = String(p || '');
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  }
+  return h.toString(36).slice(0, 5);
+}
+
+export function genRuleId(name, pattern) {
+  const baseName = String(name || 'rule')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-');
+  const ph = _hashPattern(pattern);
+  const ts = Date.now().toString(36);
+  const rand = Math.random().toString(36).slice(2, 6);
+  return `r-${baseName}-${ph}-${ts}-${rand}`;
+}
