@@ -1,40 +1,69 @@
-import { DEFAULT_RULES } from './rules.js';
 import { Storage } from './storage.js';
 
 export class RuleEngine {
   static rules = [];
   static enabledRules = new Set();
+  static SCOPE_SYNONYM_MAP = {
+    any: new Set(['any', 'all']),
+    any_headers: new Set(['any header', 'any headers', 'header', 'headers']),
+    any_body: new Set(['any body', 'any bodies', 'body', 'bodies']),
+    request_all: new Set(['request', 'req', 'request all']),
+    response_all: new Set(['response', 'resp', 'response all']),
+    request_line: new Set(['request line', 'request_line', 'req line', 'url']),
+    response_line: new Set(['response line', 'response_line', 'resp line']),
+    request_headers: new Set([
+      'request header',
+      'request headers',
+      'req header',
+      'req headers',
+      'request_header',
+      'req_header',
+    ]),
+    response_headers: new Set([
+      'response header',
+      'response headers',
+      'resp header',
+      'resp headers',
+      'response_header',
+      'resp_header',
+    ]),
+    request_body: new Set(['request body', 'req body', 'req_body', 'request_body']),
+    response_body: new Set(['response body', 'resp body', 'resp_body', 'response_body']),
+  };
 
   static async init(customRules = []) {
-    let useDefaults = true;
+    const base = Array.isArray(customRules) ? customRules : [];
+    const saved = await this._loadSavedRules();
+    this.rules = this._mergeRules(base, saved);
+    this.enabledRules = await this._loadEnabledRules(this.rules);
+  }
+
+  static async _loadSavedRules() {
     try {
-      const disabled = await Storage.getFlag('disableDefaults');
-      useDefaults = !disabled;
-    } catch {}
-    const base = [
-      ...(useDefaults ? DEFAULT_RULES : []),
-      ...(Array.isArray(customRules) ? customRules : []),
-    ];
-    let saved = [];
-    try {
-      saved = await Storage.getRules();
-    } catch {}
-    // 去重并以已保存规则覆盖默认规则（按 id 合并）
+      const saved = await Storage.getRules();
+      return Array.isArray(saved) ? saved : [];
+    } catch {
+      return [];
+    }
+  }
+
+  static _mergeRules(base, saved) {
     const byId = new Map();
-    for (const r of base) byId.set(r.id, r);
-    for (const r of saved) byId.set(r.id, r);
-    this.rules = [...byId.values()];
+    for (const r of base || []) if (r?.id) byId.set(r.id, r);
+    for (const r of saved || []) if (r?.id) byId.set(r.id, r);
+    return [...byId.values()];
+  }
+
+  static async _loadEnabledRules(rules) {
     try {
       const cfg = await Storage.getConfig();
-      const ids = Array.isArray(cfg?.enabledRules) && cfg.enabledRules.length > 0
-        ? cfg.enabledRules
-        : this.rules
-            .filter((r) => r.loaded !== false)
-            .map((r) => r.id);
-      this.enabledRules = new Set(ids);
+      const ids =
+        Array.isArray(cfg?.enabledRules) && cfg.enabledRules.length > 0
+          ? cfg.enabledRules
+          : (rules || []).filter((r) => r.loaded !== false).map((r) => r.id);
+      return new Set(ids);
     } catch {
-      // 默认只启用 loaded!==false 的规则（无 loaded 字段视为启用）
-      this.enabledRules = new Set(this.rules.filter((r) => r.loaded !== false).map((r) => r.id));
+      return new Set((rules || []).filter((r) => r.loaded !== false).map((r) => r.id));
     }
   }
 
@@ -72,7 +101,8 @@ export class RuleEngine {
           matched: m[0],
           context: this._ctx(text, m.index ?? 0, 50),
           severity: rule.severity || 'medium',
-          sensitive: rule.sensitive === true || ((rule.sensitive === undefined) && (rule.severity === 'high')),
+          sensitive:
+            rule.sensitive === true || (rule.sensitive === undefined && rule.severity === 'high'),
         });
         count++;
         if (count > 1000) break; // safety guard
@@ -177,68 +207,54 @@ export class RuleEngine {
   }
 
   static _normScope(s) {
-    const raw = String(s || '').trim().toLowerCase();
-    if (!raw || raw === 'any' || raw === 'all') return 'any';
-    if (['any header', 'any headers', 'header', 'headers'].includes(raw)) return 'any_headers';
-    if (['any body', 'any bodies', 'body', 'bodies'].includes(raw)) return 'any_body';
-    if (['request', 'req', 'request all'].includes(raw)) return 'request_all';
-    if (['response', 'resp', 'response all'].includes(raw)) return 'response_all';
-    if (['request line', 'request_line', 'req line', 'url'].includes(raw)) return 'request_line';
-    if (['response line', 'response_line', 'resp line'].includes(raw)) return 'response_line';
-    if (['request header', 'request headers', 'req header', 'req headers', 'request_header', 'req_header'].includes(raw))
-      return 'request_headers';
-    if (['response header', 'response headers', 'resp header', 'resp headers', 'response_header', 'resp_header'].includes(raw))
-      return 'response_headers';
-    if (['request body', 'req body', 'req_body', 'request_body'].includes(raw))
-      return 'request_body';
-    if (['response body', 'resp body', 'resp_body', 'response_body'].includes(raw))
-      return 'response_body';
+    const raw = String(s || '')
+      .trim()
+      .toLowerCase();
+    if (!raw) return 'any';
+    for (const [key, set] of Object.entries(this.SCOPE_SYNONYM_MAP)) {
+      if (set.has(raw)) return key;
+    }
     return 'any';
   }
 
-  static _textForScope(req, scope) {
+  static _joinObj(obj) {
+    try {
+      return Object.entries(obj || {})
+        .map(([k, v]) => `${k}: ${v}`)
+        .join('\n');
+    } catch {
+      return JSON.stringify(obj || {});
+    }
+  }
+
+  static _buildSegments(req) {
     const reqHeaders = req.reqHeaders || {};
     const resHeaders = req.resHeaders || {};
     const reqBody = String(req.reqBody || '');
     const resBody = String(req.resBody !== undefined ? req.resBody : req.body || '');
-    const joinObj = (obj) => {
-      try {
-        return Object.entries(obj || {})
-          .map(([k, v]) => `${k}: ${v}`)
-          .join('\n');
-      } catch {
-        return JSON.stringify(obj || {});
-      }
-    };
     const lineReq = `${String(req.method || '')} ${String(req.url || '')}`.trim();
     const lineResp = `HTTP ${req.statusCode || 0}${req.statusText ? ' ' + req.statusText : ''}`;
-    switch (scope) {
-      case 'request_line':
-        return lineReq;
-      case 'response_line':
-        return lineResp;
-      case 'request_headers':
-        return joinObj(reqHeaders);
-      case 'response_headers':
-        return joinObj(resHeaders);
-      case 'any_headers':
-        return [joinObj(reqHeaders), joinObj(resHeaders)].filter(Boolean).join('\n');
-      case 'request_body':
-        return reqBody;
-      case 'response_body':
-        return resBody;
-      case 'any_body':
-        return [reqBody, resBody].filter(Boolean).join('\n');
-      case 'request_all':
-        return [lineReq, joinObj(reqHeaders), reqBody].filter(Boolean).join('\n');
-      case 'response_all':
-        return [lineResp, joinObj(resHeaders), resBody].filter(Boolean).join('\n');
-      case 'any':
-      default:
-        return [lineReq, lineResp, joinObj(reqHeaders), joinObj(resHeaders), reqBody, resBody]
-          .filter(Boolean)
-          .join('\n');
-    }
+    const jReq = this._joinObj(reqHeaders);
+    const jRes = this._joinObj(resHeaders);
+    return {
+      request_line: lineReq,
+      response_line: lineResp,
+      request_headers: jReq,
+      response_headers: jRes,
+      any_headers: [jReq, jRes].filter(Boolean).join('\n'),
+      request_body: reqBody,
+      response_body: resBody,
+      any_body: [reqBody, resBody].filter(Boolean).join('\n'),
+      request_all: [lineReq, jReq, reqBody].filter(Boolean).join('\n'),
+      response_all: [lineResp, jRes, resBody].filter(Boolean).join('\n'),
+      any: [lineReq, lineResp, jReq, jRes, reqBody, resBody].filter(Boolean).join('\n'),
+    };
+  }
+
+  static _textForScope(req, scope) {
+    const seg = this._buildSegments(req);
+    const key = this._normScope(scope);
+    return seg[key] || seg.any;
   }
 
   static _dedupeInPlace() {
