@@ -381,7 +381,9 @@ body {
   border-radius: 6px;
 }
 
-.rule-meta { display: none; }
+.rule-meta {
+  display: none;
+}
 .rule-meta .rule-pattern {
   background: #0c1015;
   padding: 2px 6px;
@@ -427,8 +429,13 @@ body {
   color: var(--fg);
   margin-bottom: 8px;
 }
-.section-row { margin: 6px 0; }
-.section-tip { color: var(--muted); font-size: 12px; }
+.section-row {
+  margin: 6px 0;
+}
+.section-tip {
+  color: var(--muted);
+  font-size: 12px;
+}
 
 .chips {
   display: flex;
@@ -451,7 +458,9 @@ body {
   color: var(--muted);
   cursor: pointer;
 }
-.chip-remove:hover { color: var(--fg); }
+.chip-remove:hover {
+  color: var(--fg);
+}
 
 /* 追加“＋新增”chip与轻量编辑器 */
 .chip-add {
@@ -460,22 +469,35 @@ body {
   background: #0f141b;
   border-style: dashed;
 }
-.chip-add:hover { color: var(--fg); background: #12161c; }
+.chip-add:hover {
+  color: var(--fg);
+  background: #12161c;
+}
 .chip-editor input.chip-editor-input {
   min-width: 200px;
 }
 
 /* 请求/响应包外框与切换 */
-.packet { padding: 8px 0; }
+.packet {
+  padding: 8px 0;
+}
 .packet-controls {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
 }
-.packet-title { font-weight: 600; color: var(--fg); }
-.packet-toggle label { color: var(--muted); margin-right: 8px; }
-.packet-toggle input[type='radio'] { accent-color: var(--accent); }
+.packet-title {
+  font-weight: 600;
+  color: var(--fg);
+}
+.packet-toggle label {
+  color: var(--muted);
+  margin-right: 8px;
+}
+.packet-toggle input[type='radio'] {
+  accent-color: var(--accent);
+}
 .packet-frame {
   margin: 8px 12px;
   border: 1px solid var(--border);
@@ -487,21 +509,33 @@ body {
   padding: 12px;
   max-height: 50vh;
   overflow: auto;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
   font-size: 12px;
   line-height: 1.5;
 }
 
 /* 全局暗色滚动条样式 */
-html { scrollbar-color: #303a46 #0f1216; scrollbar-width: thin; }
-*::-webkit-scrollbar { width: 10px; height: 10px; }
-*::-webkit-scrollbar-track { background: #0f1216; }
+html {
+  scrollbar-color: #303a46 #0f1216;
+  scrollbar-width: thin;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: #0f1216;
+}
 *::-webkit-scrollbar-thumb {
   background-color: #303a46;
   border: 2px solid #0f1216;
   border-radius: 6px;
 }
-*::-webkit-scrollbar-thumb:hover { background-color: #475569; }
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #475569;
+}
 
 /* 基础配置表单统一暗色样式（未显式设置 type 时也覆盖） */
 .config-section input:not([type='checkbox']),
@@ -524,7 +558,9 @@ html { scrollbar-color: #303a46 #0f1216; scrollbar-width: thin; }
   color: var(--fg);
   border-radius: 6px;
 }
-.config-section button:hover { background: #0f141b; }
+.config-section button:hover {
+  background: #0f141b;
+}
 .config-section input:focus,
 .config-section select:focus,
 .config-section textarea:focus,
