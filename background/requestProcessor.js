@@ -1,5 +1,6 @@
 import { Storage } from '../shared/storage.js';
 import { RuleEngine } from '../shared/ruleEngine.js';
+import { DEFAULT_FILTER_EXTS } from '../shared/utils.js';
 
 async function ensureStorageReady() {
   if (!Storage.db) {
@@ -26,7 +27,7 @@ function isUnsupportedProtocol(u) {
 async function isFilteredByExtension(url) {
   let list = [];
   try {
-    list = await Storage.getValue('filterExtensions', []);
+    list = await Storage.getValue('filterExtensions', DEFAULT_FILTER_EXTS);
   } catch {}
   const qp = String(url || '')
     .toLowerCase()
