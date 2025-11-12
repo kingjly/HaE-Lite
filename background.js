@@ -1,5 +1,6 @@
 import { Storage } from './shared/storage.js';
 import { RuleEngine } from './shared/ruleEngine.js';
+import { DEFAULT_FILTER_EXTS } from './shared/utils.js';
 import { processRequest } from './background/requestProcessor.js';
 import {
   initDebuggerCapture as initDebuggerCaptureImpl,
@@ -201,7 +202,7 @@ function handleSetFilterExts(list, sendResponse) {
 }
 
 function handleGetFilterExts(sendResponse) {
-  Storage.getValue('filterExtensions', [])
+  Storage.getValue('filterExtensions', DEFAULT_FILTER_EXTS)
     .then((list) => sendResponse({ ok: true, list }))
     .catch((err) => sendResponse({ ok: false, error: String(err) }));
 }
