@@ -4,7 +4,7 @@
 
 [![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-blue)](https://developer.chrome.com/docs/extensions/mv3/intro/)
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-green)](https://developer.chrome.com/docs/extensions/mv3/intro/platform-vision/)
-[![License](https://img.shields.io/badge/License-MIT-orange)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-orange)](https://github.com/kingjly/HaE-Lite/blob/main/LICENSE)
 
 English | [中文](README.md)
 
@@ -33,20 +33,18 @@ HaE-Lite (Highlighter & Extractor Lite) is a lightweight data extraction and hig
    ```
 
 2. **Load the extension**
-
    - Open Chrome and navigate to `chrome://extensions/`
    - Enable "Developer mode" in the top-right corner
    - Click "Load unpacked" and select the `HaE-Lite` folder
    - The extension icon appears in the toolbar—done ✅
 
 3. **Open the panel**
-
    - Visit any webpage, press `F12` or `Ctrl+Shift+I` to open DevTools
    - Click the **HaE-Lite** tab at the top to start using it
 
 ### Usage Example
 
-- **Capture demo**: Open any website and you’ll see requests listed in the HaE-Lite panel.
+- **Capture demo**: Open [example.com](https://example.com) and you’ll see requests listed in the HaE-Lite panel.
 - **Rule demo**: Built-in rules cover ID numbers, phone numbers, emails, JWTs, API keys, etc.
 - **Highlighting**: Matches are color-highlighted for quick spotting.
 
@@ -68,16 +66,16 @@ In the panel’s "Rules" sub-tab you can:
 
 ### Rule Fields
 
-| Field       | Type    | Description                                                  |
-| ----------- | ------- | ------------------------------------------------------------ |
-| `id`        | string  | Unique identifier                                            |
-| `name`      | string  | Display name                                                 |
-| `pattern`   | string  | Regular expression for matching (supports inline flags like `(?i)`) |
-| `category`  | string  | Rule category (e.g., Auth, Key, Secret)                      |
-| `severity`  | string  | Severity level (`low`/`medium`/`high`)                       |
+| Field       | Type    | Description                                                                                            |
+| ----------- | ------- | ------------------------------------------------------------------------------------------------------ |
+| `id`        | string  | Unique identifier                                                                                      |
+| `name`      | string  | Display name                                                                                           |
+| `pattern`   | string  | Regular expression for matching (supports inline flags like `(?i)`)                                    |
+| `category`  | string  | Rule category (e.g., Auth, Key, Secret)                                                                |
+| `severity`  | string  | Severity level (`low`/`medium`/`high`)                                                                 |
 | `scope`     | string  | Match scope (`any`, `request header`, `request body`, `response header`, `response body`, `url`, etc.) |
-| `sensitive` | boolean | Mark as sensitive (emphasized in list)                       |
-| `loaded`    | boolean | Whether the rule is enabled by default                       |
+| `sensitive` | boolean | Mark as sensitive (emphasized in list)                                                                 |
+| `loaded`    | boolean | Whether the rule is enabled by default                                                                 |
 
 Compatibility with original HaE YAML:
 
@@ -124,22 +122,30 @@ In the panel’s "Settings" sub-tab you can configure:
 
 ```
 HaE-Lite/
-├── manifest.json          # Extension manifest
-├── background.js          # Background script (debugger capture)
-├── devtools/              # DevTools panel
-│   ├── devtools.html/js   # Panel entry
-│   ├── panel.html/js/css  # Main UI
-│   └── styles.css         # Styles
-├── shared/                # Shared modules
-│   ├── storage.js         # Storage wrapper
-│   ├── ruleEngine.js      # Rule engine
-│   ├── rules.js           # Default rules
-│   └── utils.js           # Utilities
-├── scripts/               # Development scripts
-│   ├── quality-check.ps1  # Code quality check
-│   └── dev-http.ps1       # Local preview
-├── docs/                  # Documentation
-└── Rules.yml              # Default rule file
+├── manifest.json              # Extension manifest
+├── background.js              # Background entry (MV3 Service Worker)
+├── background/                # Background modules
+│   ├── requestProcessor.js    # Request filtering and domain matching
+│   └── captureInit.js         # Debugger attach/detach and event registration
+├── devtools/                  # DevTools panel
+│   ├── devtools.html          # Panel entry
+│   ├── devtools.js            # Panel script
+│   ├── panel.html             # Main UI
+│   ├── panel.js               # Panel logic
+│   ├── networkCapture.js      # Request/response capture bridge
+│   ├── styles.css             # Styles
+│   └── views/                 # View modules
+│       ├── requestsView.js    # Request list and highlighting
+│       ├── rulesView.js       # Rule management
+│       ├── uiControls.js      # UI controls & interactions
+│       ├── settingsView.js    # Settings view
+│       ├── settingsInit.js    # Settings init
+│       └── previewInit.js     # Preview init
+├── shared/                    # Shared modules
+│   ├── storage.js             # Storage wrapper
+│   ├── ruleEngine.js          # Rule engine
+│   └── utils.js               # Utilities
+└── Rules.yml                  # Default rule file
 ```
 
 ### Local Development
@@ -162,18 +168,18 @@ HaE-Lite/
    Visit http://127.0.0.1:5500/devtools/panel.html to preview the panel UI
 
 3. **Code quality check**
-
    ```powershell
    .\scripts\quality-check.ps1
    ```
 
 ### Extension Permissions
 
-| Permission | Purpose                                      |
-| ---------- | -------------------------------------------- |
-| `debugger` | Capture network requests and response bodies |
-| `storage`  | Save rules and history                       |
-| `tabs`     | Monitor tab changes and auto-attach debugger |
+| Permission         | Purpose                                        |
+| ------------------ | ---------------------------------------------- |
+| `debugger`         | Capture network requests and response bodies   |
+| `storage`          | Save rules and history                         |
+| `tabs`             | Monitor tab changes and auto-attach debugger   |
+| `host_permissions` | Access all HTTP/HTTPS sites to capture traffic |
 
 ## 📋 Known Limitations
 
@@ -199,7 +205,8 @@ Issues and Pull Requests are welcome!
 
 ## 📄 License
 
-MIT License [LICENSE](https://github.com/kingjly/HaE-Lite/blob/main/LICENSE)
+Licensed under the MIT License — see:
+https://github.com/kingjly/HaE-Lite/blob/main/LICENSE
 
 ---
 
