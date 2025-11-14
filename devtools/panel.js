@@ -6,6 +6,7 @@ import {
   renderRuleForm as renderRuleFormView,
   createRuleItem as createRuleItemView,
 } from './views/rulesView.js';
+import { createUiSelect as createUiSelectView } from './views/uiSelect.js';
 import { initPreviewData as initPreviewDataView } from './views/previewInit.js';
 import {
   renderRequests as renderRequestsView,
@@ -341,16 +342,7 @@ class Panel {
   }
 
   _makeSelect(options, current, onBlur) {
-    const el = document.createElement('select');
-    (options || []).forEach((opt) => {
-      const o = document.createElement('option');
-      o.value = opt;
-      o.textContent = opt;
-      if (opt === current) o.selected = true;
-      el.appendChild(o);
-    });
-    el.addEventListener('blur', () => onBlur(el.value));
-    return el;
+    return createUiSelectView(options, current, onBlur);
   }
 
   renderRuleForm() {
@@ -493,7 +485,4 @@ class Panel {
     return initPreviewDataView(this);
   }
 }
-
-if (typeof chrome !== 'undefined' && chrome.devtools?.network) startNetworkCapture();
-
-new Panel();
+if (typeof chrome !== 'undefined' && chrome.devtools?.network) startNetworkCapture(); new Panel();
