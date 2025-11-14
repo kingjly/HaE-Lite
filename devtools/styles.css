@@ -7,6 +7,7 @@
   --good: #2ea043;
   --warn: #d29922;
   --bad: #f85149;
+  --datalist-indicator: 28px;
 }
 
 html,
@@ -103,11 +104,16 @@ body {
   align-items: center;
   gap: 8px;
 }
+.metrics {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .method {
   font-weight: 600;
 }
 .badge {
-  margin-left: auto;
   padding: 2px 6px;
   border-radius: 10px;
   background: #1b2130;
@@ -120,12 +126,14 @@ body {
 }
 /* Response length badge shown to the left of rule hit count */
 .length-badge {
-  margin-left: auto;
-  margin-right: 8px;
   padding: 2px 6px;
   border-radius: 10px;
   background: #151a22;
   color: var(--muted);
+  width: 8ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .badge.good {
   background: #132019;
@@ -242,12 +250,47 @@ body {
 }
 .rules-header {
   display: grid;
-  grid-template-columns: 24px 1fr 1fr 110px 100px 140px 2fr 140px;
-  gap: 8px;
+  grid-template-columns: var(--col-0, 24px) var(--col-1, 1fr) var(--col-2, 1fr) var(--col-3, 110px) var(--col-4, 100px) var(--col-5, 140px) var(--col-6, 2fr) var(--col-7, 140px);
+  gap: var(--col-gap, 10px);
   padding: 6px 8px;
   border-bottom: 1px solid var(--border);
   color: var(--muted);
   font-size: 12px;
+}
+.rules-header .col-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  padding: 0 6px;
+  overflow: visible;
+}
+.rules-header .col-header { position: relative; }
+.rules-header .col-header::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: calc(-1 * var(--col-gap, 10px) / 2);
+  width: 1px;
+  height: 100%;
+  background: #2a313a;
+  pointer-events: none;
+}
+.rules-header .col-header:last-child { border-right: none; }
+.rules-header .col-header .col-label {
+  text-align: center;
+  width: 100%;
+  white-space: nowrap;
+}
+.rules-header .col-header .col-resizer {
+  position: absolute;
+  right: calc(-1 * var(--col-gap, 10px) / 2 - var(--resizer-w, 8px) / 2);
+  top: 0;
+  width: var(--resizer-w, 8px);
+  height: 100%;
+  cursor: col-resize;
+  z-index: 3;
 }
 .rule-group {
   margin-top: 8px;
@@ -274,11 +317,24 @@ body {
 .rule-item,
 .rule-new {
   display: grid;
-  grid-template-columns: 24px 1fr 1fr 110px 100px 140px 2fr 140px;
+  grid-template-columns: var(--col-0, 24px) var(--col-1, 1fr) var(--col-2, 1fr) var(--col-3, 110px) var(--col-4, 100px) var(--col-5, 140px) var(--col-6, 2fr) var(--col-7, 140px);
   align-items: center;
-  gap: 8px;
+  gap: var(--col-gap, 10px);
   padding: 6px 8px;
   border-bottom: 1px solid var(--border);
+}
+.rule-item > *,
+.rule-new > * {
+  padding: 0 6px;
+}
+.rule-item > *,
+.rule-new > * { position: relative; }
+.rule-item > *::after,
+.rule-new > *::after { display: none; content: none; }
+.rule-item > *:not(:nth-child(7)),
+.rule-new > *:not(:nth-child(7)) {
+  justify-self: center;
+  text-align: center;
 }
 .rule-item .badge {
   font-size: 12px;
@@ -293,6 +349,87 @@ body {
   color: var(--fg);
   border: 1px solid var(--border);
   border-radius: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  padding-right: 12px;
+  padding-left: 12px;
+  text-align: center;
+  outline: none;
+  background-clip: padding-box;
+  position: relative;
+  z-index: 2;
+}
+
+/* 隐藏datalist默认下拉箭头，避免文本视觉偏移 */
+.datalist-input {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: none;
+  text-align: center;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+.datalist-input::-webkit-calendar-picker-indicator { display: none !important; -webkit-appearance: none; opacity: 0; }
+.datalist-input::-webkit-search-cancel-button { display: none; }
+
+/* 提升选择器优先级，覆盖UA为datalist添加的右侧留白 */
+.rule-item input.datalist-input[type='text'],
+.rule-new input.datalist-input[type='text'] {
+  padding-left: 12px;
+  padding-right: 12px;
+  padding-inline-end: 12px;
+  text-align: center;
+}
+
+.rule-item input[type='text']::placeholder,
+.rule-new input[type='text']::placeholder { text-align: center; }
+
+.ui-select {
+  position: relative;
+  padding: 6px 8px;
+  background: #11161c;
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+  z-index: 1000;
+}
+.ui-select .sel-display { display: block; text-align: center; }
+.ui-select .sel-arrow { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid var(--muted); pointer-events: none; }
+.ui-select .sel-menu { position: absolute; left: 50%; transform: translateX(-50%); top: calc(100% + 4px); min-width: 100%; background: #11161c; border: 1px solid var(--border); border-radius: 6px; padding: 4px 0; z-index: 1001; display: none; }
+.ui-select.open .sel-menu { display: block; }
+.ui-select.open { z-index: 10000; }
+.ui-select.open .sel-menu { z-index: 10001; }
+.ui-select .sel-menu li { list-style: none; padding: 6px 12px; text-align: center; color: var(--fg); }
+.ui-select .sel-menu li:hover { background: #1a1f27; }
+
+/* 让下拉控件收起与展开文本均居中 */
+.rule-item select,
+.rule-new select,
+.rule-form select {
+  text-align: center;
+  text-align-last: center;
+}
+.rules option { text-align: center !important; }
+.rule-item select option,
+.rule-new select option,
+.rule-form select option { text-align: center !important; }
+
+.ui-select .sel-menu li { text-align: center; }
+
+/* Regex column left align */
+.rule-item > input[type='text']:nth-child(7),
+.rule-new > input[type='text']:nth-child(7) {
+  text-align: left;
+}
+.rule-item > input[type='text']:nth-child(7)::placeholder,
+.rule-new > input[type='text']:nth-child(7)::placeholder { text-align: left; }
+
+.rule-item > :nth-child(7),
+.rule-new > :nth-child(7) {
+  justify-self: stretch;
 }
 .rule-item .rule-id {
   font-size: 12px;
@@ -367,6 +504,8 @@ body {
   color: var(--fg);
   border: 1px solid var(--border);
   border-radius: 6px;
+  position: relative;
+  z-index: 2;
 }
 .rule-form .actions {
   grid-column: 2;
@@ -571,4 +710,9 @@ html {
 }
 .config-section input[type='checkbox'] {
   accent-color: var(--accent);
+}
+.rule-item select:focus,
+.rule-new select:focus {
+  border-color: var(--border);
+  box-shadow: none;
 }
