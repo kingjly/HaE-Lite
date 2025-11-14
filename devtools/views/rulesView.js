@@ -1,9 +1,28 @@
 // Rules view renderer extracted from Panel to reduce panel.js size
 // All operations delegate back into the Panel instance passed in
 
+import { Storage } from '../../shared/storage.js';
+
+const COL_COUNT = 8;
+let _measureCanvas = null;
+function _getFont() {
+  try {
+    return window.getComputedStyle(document.body).font || '13px system-ui';
+  } catch {
+    return '13px system-ui';
+  }
+}
+function _measureText(text) {
+  if (!_measureCanvas) _measureCanvas = document.createElement('canvas');
+  const ctx = _measureCanvas.getContext('2d');
+  ctx.font = _getFont();
+  return Math.ceil(ctx.measureText(String(text || '')).width);
+}
+
 export function renderRules(panel) {
   const { rulesContainer } = panel;
   rulesContainer.innerHTML = '';
+  applyColWidths(panel);
   renderToolbar(panel);
   renderRuleForm(panel);
   const groups = buildGroups(panel._orderedRules());
@@ -78,6 +97,10 @@ function renderGroups(panel, groups) {
     }
     rulesContainer.appendChild(group);
   }
+  const header = rulesContainer.querySelector('.rules-header');
+  if (header) {
+    for (let i = 0; i < COL_COUNT; i++) ensureColMin(panel, header, i);
+  }
 }
 
 export function createRuleItem(panel, r) {
@@ -127,6 +150,11 @@ function buildRuleControls(panel, r) {
   const pattern = panel._makeTextInput(r.pattern, '正则表达式', (val) =>
     panel.onRuleInlineSave(r.id, { pattern: val })
   );
+  const headerEl = panel.rulesContainer.querySelector('.rules-header');
+  name.addEventListener('input', () => ensureColMin(panel, headerEl, 1));
+  cat.addEventListener('input', () => ensureColMin(panel, headerEl, 2));
+  sev.addEventListener('change', () => ensureColMin(panel, headerEl, 3));
+  scope.addEventListener('change', () => ensureColMin(panel, headerEl, 5));
   return [enable, name, cat, sev, sens, scope, pattern];
 }
 
@@ -164,17 +192,189 @@ function appendHeader(panel) {
   const header = document.createElement('div');
   header.className = 'rules-header';
   header.innerHTML = `
-      <span>启用</span>
-      <span>名称</span>
-      <span>类别</span>
-      <span>严重性</span>
-      <span>敏感</span>
-      <span>范围</span>
-      <span>正则表达式</span>
-      <span>操作</span>
+      <span class="col-header" data-col="0"><span class="col-label">启用</span><span class="col-resizer" data-col="0"></span></span>
+      <span class="col-header" data-col="1"><span class="col-label">名称</span><span class="col-resizer" data-col="1"></span></span>
+      <span class="col-header" data-col="2"><span class="col-label">类别</span><span class="col-resizer" data-col="2"></span></span>
+      <span class="col-header" data-col="3"><span class="col-label">严重性</span><span class="col-resizer" data-col="3"></span></span>
+      <span class="col-header" data-col="4"><span class="col-label">敏感</span><span class="col-resizer" data-col="4"></span></span>
+      <span class="col-header" data-col="5"><span class="col-label">范围</span><span class="col-resizer" data-col="5"></span></span>
+      <span class="col-header" data-col="6"><span class="col-label">正则表达式</span><span class="col-resizer" data-col="6"></span></span>
+      <span class="col-header" data-col="7"><span class="col-label">操作</span><span class="col-resizer" data-col="7"></span></span>
     `;
   panel.rulesContainer.appendChild(header);
+  for (let i = 0; i < COL_COUNT; i++) ensureColMin(panel, header, i);
+  bindColumnResize(panel, header);
 }
+
+function applyColWidths(panel) {
+  Storage.getValue('rules.colWidths', []).then((arr) => {
+    const vals = Array.isArray(arr) ? arr : [];
+    for (let i = 0; i < COL_COUNT; i++) {
+      const v = vals[i];
+      if (i === 0) {
+        const minEnableCol = Math.max(42, _measureText('启用') + 16);
+        panel.rulesContainer.style.setProperty('--col-0', `${minEnableCol}px`);
+        continue;
+      }
+      if (v && typeof v === 'string' && v.trim()) {
+        panel.rulesContainer.style.setProperty(`--col-${i}`, v);
+      } else {
+        panel.rulesContainer.style.removeProperty(`--col-${i}`);
+      }
+    }
+    for (let i = 0; i < COL_COUNT; i++) {
+      ensureColMin(panel, null, i);
+    }
+  });
+}
+
+function bindColumnResize(panel, header) {
+  const state = createResizeState();
+  header.querySelectorAll('.col-resizer').forEach((el) => {
+    el.addEventListener('mousedown', (e) => {
+      const idx = Number(el.getAttribute('data-col')) || 0;
+      handleResizeMouseDown(panel, header, state, idx, e);
+    });
+  });
+}
+
+function createResizeState() {
+  return { dragging: null, startX: 0, startW: 0, minW: 0, threshold: 0 };
+}
+
+function handleResizeMove(panel, state, e) {
+  if (state.dragging == null) return;
+  const idx = state.dragging;
+  const totalDx = e.clientX - state.startX;
+  const base = state.startW + totalDx;
+  const w = Math.max(state.minW, base);
+  panel.rulesContainer.style.setProperty(`--col-${idx}`, `${w}px`);
+}
+
+async function handleResizeUp(panel, state, onMove, onUp) {
+  if (state.dragging == null) return;
+  state.dragging = null;
+  document.removeEventListener('mousemove', onMove);
+  document.removeEventListener('mouseup', onUp);
+  try { document.body.style.cursor = ''; } catch {}
+  const out = [];
+  for (let i = 0; i < COL_COUNT; i++) {
+    const v = panel.rulesContainer.style.getPropertyValue(`--col-${i}`);
+    out.push(v ? v.trim() : '');
+  }
+  try {
+    await Storage.setValue('rules.colWidths', out);
+  } catch {}
+}
+
+function handleResizeMouseDown(panel, header, state, idx, e) {
+  const onMove = (evt) => handleResizeMove(panel, state, evt);
+  const onUp = () => handleResizeUp(panel, state, onMove, onUp);
+  const cell = header.querySelectorAll('.col-header')[idx];
+  const rect = cell.getBoundingClientRect();
+  state.dragging = idx;
+  state.startX = e.clientX;
+  state.startW = rect.width;
+  state.minW = computeMinWidth(panel, header, idx);
+  if (state.startW < state.minW) {
+    panel.rulesContainer.style.setProperty(`--col-${idx}`, `${state.minW}px`);
+    state.startW = state.minW;
+  }
+  state.threshold = Math.max(0, state.minW - state.startW);
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+  try { document.body.style.cursor = 'col-resize'; } catch {}
+  e.preventDefault();
+  e.stopPropagation();
+}
+
+function computeMinWidth(panel, header, idx) {
+  if (idx === 0) return Math.max(42, _measureText('启用') + 16);
+  const label = header.querySelectorAll('.col-label')[idx];
+  const labelW = label ? _measureText(label.textContent) : 0;
+  const rows = panel.rulesContainer.querySelectorAll('.rule-item, .rule-new');
+  const maxContentW = getMaxContentWidth(rows, idx);
+  const base = Math.max(labelW, maxContentW);
+  if (idx === 6) {
+    const headerW = _measureText('正则表达式') + 16;
+    return Math.max(headerW, Math.max(80, base + 24));
+  }
+  return Math.max(60, base + 24);
+}
+
+function getMaxContentWidth(rows, idx) {
+  let max = 0;
+  rows.forEach((row) => {
+    const el = row.children[idx];
+    if (!el) return;
+    const w = measureCellWidth(el, idx);
+    max = Math.max(max, w);
+  });
+  return max;
+}
+
+function measureCellWidth(el, idx) {
+  const measureByIdx = {
+    1: measureTextCell,
+    2: measureTextCell,
+    3: (e) => measureSelectMax(e, ['low', 'medium', 'high']) + getSelectExtra(e),
+    4: () => 26,
+    5: (e) => measureSelectMax(e) + getSelectExtra(e),
+    7: (e) => measureButtons(e) || _measureText(e.textContent || ''),
+  };
+  const fn = measureByIdx[idx];
+  return fn ? fn(el) : _measureText(el.textContent || '');
+}
+
+function measureTextCell(el) {
+  const v = el.value || el.textContent || '';
+  return _measureText(v);
+}
+
+function measureSelectMax(el, fallback) {
+  const opts = el.querySelectorAll ? el.querySelectorAll('option, .sel-menu li') : [];
+  let localMax = 0;
+  if (opts.length) {
+    opts.forEach((o) => (localMax = Math.max(localMax, _measureText(o.textContent))));
+  } else if (Array.isArray(fallback)) {
+    fallback.forEach((t) => (localMax = Math.max(localMax, _measureText(t))));
+  }
+  return localMax;
+}
+
+function getSelectExtra(el) {
+  try {
+    const target = el && el.tagName && el.tagName.toLowerCase() === 'select' ? el : el.querySelector('select') || el;
+    const s = window.getComputedStyle(target);
+    const pr = parseFloat(s.paddingRight) || 0;
+    const pl = parseFloat(s.paddingLeft) || 0;
+    const br = (parseFloat(s.borderLeftWidth) || 0) + (parseFloat(s.borderRightWidth) || 0);
+    const arrow = 0;
+    return pr + pl + br + arrow;
+  } catch {
+    return 32;
+  }
+}
+
+function measureButtons(el) {
+  const btns = el.querySelectorAll ? el.querySelectorAll('button') : [];
+  let localMax = 0;
+  btns.forEach((b) => (localMax = Math.max(localMax, _measureText(b.textContent))));
+  return localMax;
+}
+
+function ensureColMin(panel, header, idx) {
+  const h = header || panel.rulesContainer.querySelector('.rules-header');
+  if (!h) return;
+  const min = computeMinWidth(panel, h, idx);
+  const cur = panel.rulesContainer.style.getPropertyValue(`--col-${idx}`);
+  const px = parseFloat(cur);
+  const v = Number.isFinite(px) && px > 0 ? px : 0;
+  const next = Math.max(min, v);
+  panel.rulesContainer.style.setProperty(`--col-${idx}`, `${next}px`);
+}
+
+ 
 
 function buildFormInputs(panel) {
   const rowInputs = {
@@ -210,6 +410,7 @@ function buildFormInputs(panel) {
     catList.appendChild(o);
   });
   rowInputs.category.setAttribute('list', 'category-list');
+  rowInputs.category.classList.add('datalist-input');
   return { catList, ...rowInputs };
 }
 
