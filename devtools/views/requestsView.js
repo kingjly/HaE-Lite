@@ -156,8 +156,10 @@ export function createRequestItem(panel, request) {
       <div class="request-header">
         <span class="method ${escapeHtml(request.method || '')}">${escapeHtml(request.method || '')}</span>
         <span class="url">${escapeHtml(truncate(request.url || '', 80))}</span>
-        <span class="length-badge" title="响应长度 (bytes)">${resLen}</span>
-        <span class="badge ${sev}">${(request.matches || []).length}</span>
+        <div class="metrics">
+          <span class="length-badge" title="响应长度 (bytes)">${resLen}</span>
+          <span class="badge ${sev}">${(request.matches || []).length}</span>
+        </div>
       </div>
       <div class="request-meta">
         <span class="time">${formatTime(request.timestamp || Date.now())}</span>
