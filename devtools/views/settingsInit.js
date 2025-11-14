@@ -19,6 +19,8 @@ async function fetchGlobalEnabled(panel) {
     if (panel.globalToggle) panel.globalToggle.checked = enabled;
   } catch (e) {
     console.warn('get global enabled failed', e);
+    panel.globalEnabled = true;
+    if (panel.globalToggle) panel.globalToggle.checked = true;
   }
 }
 
