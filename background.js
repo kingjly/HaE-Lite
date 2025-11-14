@@ -162,7 +162,7 @@ function handleSetDefaultsEnabled(enabled, sendResponse) {
 
 function handleSetGlobalEnabled(enabled, sendResponse) {
   const val = !!enabled;
-  Storage.setFlag('globalEnabled', val)
+  Storage.setValue('globalEnabled', val)
     .then(() => {
       try {
         setGlobalEnabledCache(val);
@@ -178,9 +178,8 @@ function handleSetGlobalEnabled(enabled, sendResponse) {
 }
 
 function handleGetGlobalEnabled(sendResponse) {
-  Storage.getFlag('globalEnabled')
+  Storage.getValue('globalEnabled', true)
     .then((val) => {
-      // 默认开启
       sendResponse({ ok: true, enabled: val !== false });
     })
     .catch((err) => sendResponse({ ok: false, error: String(err) }));
